@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="canonical" href="https://upliftorch.com/tools/food-safety/">
+<link rel="alternate" hreflang="zh-TW" href="https://upliftorch.com/tools/food-safety/">
+<link rel="alternate" hreflang="en" href="https://upliftorch.com/tools/food-safety/en/">
+<link rel="alternate" hreflang="x-default" href="https://upliftorch.com/tools/food-safety/en/">
+<title>食在安心 — 台灣優良餐飲地圖 | 食品安全查詢平台</title>
+<meta name="description" content="一站式查詢台灣通過衛生評鑑的優良餐廳與 HACCP 認證業者，地圖呈現、搜尋篩選，讓你吃得安心。資料來源：衛福部食藥署開放資料。">
+<meta name="keywords" content="食品安全,優良餐廳,HACCP,衛生評鑑,食藥署,台灣餐廳,食安地圖">
+<meta property="og:title" content="食在安心 — 台灣優良餐飲地圖">
+<meta property="og:description" content="查詢通過衛福部食藥署衛生評鑑的優良餐廳與 HACCP 認證業者。">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f1f5f9;--surface:#fff;--text:#1e293b;--text-secondary:#64748b;
+  --border:#e2e8f0;--primary:#10b981;--primary-dark:#059669;--primary-light:#d1fae5;
+  --header-bg:linear-gradient(135deg,#064e3b 0%,#065f46 40%,#10b981 100%);
+  --accent:#f59e0b;--accent-light:#fef3c7;
+  --radius:14px;--shadow:0 2px 16px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.1);
+  --grade-excellent:#10b981;--grade-good:#3b82f6;--grade-haccp:#8b5cf6;
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--text:#e2e8f0;--text-secondary:#94a3b8;
+  --border:#334155;--primary:#34d399;--primary-dark:#6ee7b7;--primary-light:rgba(16,185,129,.15);
+  --header-bg:linear-gradient(135deg,#022c22 0%,#064e3b 40%,#065f46 100%);
+  --accent:#fbbf24;--accent-light:rgba(245,158,11,.15);
+  --shadow:0 2px 16px rgba(0,0,0,.3);--shadow-lg:0 8px 32px rgba(0,0,0,.4);
+}
+body{font-family:'Noto Sans TC',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+a{color:var(--primary-dark);text-decoration:none}
+header{background:var(--header-bg);color:#fff;padding:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.15)}
+.header-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-size:20px;font-weight:700;white-space:nowrap}
+.brand h1 span{color:#34d399}
+.header-actions{display:flex;align-items:center;gap:10px}
+.lang-switch{color:#fff;opacity:.8;font-size:13px;padding:4px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;transition:all .2s}
+.lang-switch:hover{opacity:1;background:rgba(255,255,255,.1)}
+.theme-toggle{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);width:38px;height:38px;border-radius:8px;font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.theme-toggle:hover{background:rgba(255,255,255,.22)}
+main{max-width:1200px;margin:0 auto;padding:20px}
+.update-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.update-time{font-size:13px;color:var(--text-secondary)}
+.stats-bar{display:flex;gap:12px;flex-wrap:wrap}
+.stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.stat-dot{width:10px;height:10px;border-radius:50%}
+
+.search-section{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px}
+.search-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.search-input{flex:1;min-width:200px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:border .2s}
+.search-input:focus{border-color:var(--primary)}
+.filter-select{padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;cursor:pointer}
+.filter-btn{padding:10px 20px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.filter-btn.active{background:var(--primary);color:#fff}
+.filter-btn:not(.active){background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.filter-btn:hover{opacity:.85}
+
+.addr-search{display:flex;gap:10px;margin-top:12px;align-items:center;position:relative}
+.addr-input{flex:1;padding:10px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:border .2s}
+.addr-input:focus{border-color:var(--primary)}
+.addr-btn{padding:10px 18px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff;transition:all .2s;white-space:nowrap}
+.addr-btn:hover{opacity:.85}
+.addr-btn:disabled{opacity:.5;cursor:not-allowed}
+.addr-msg{font-size:12px;margin-top:6px;min-height:18px}
+.addr-msg.error{color:#ef4444}
+.addr-msg.success{color:var(--primary)}
+.addr-suggestions{position:absolute;top:100%;left:0;right:80px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);z-index:50;max-height:200px;overflow-y:auto;margin-top:4px;display:none}
+.addr-suggestions.show{display:block}
+.addr-suggestion{padding:10px 16px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
+.addr-suggestion:last-child{border-bottom:none}
+.addr-suggestion:hover{background:var(--primary-light)}
+.addr-suggestion small{color:var(--text-secondary);display:block;font-size:11px;margin-top:2px}
+.locate-pin{position:absolute;z-index:600;pointer-events:none;font-size:36px;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));animation:pinDrop .4s ease-out}
+@keyframes pinDrop{0%{transform:translate(-50%,-200%);opacity:0}60%{transform:translate(-50%,-90%)}100%{transform:translate(-50%,-100%);opacity:1}}
+
+.map-section{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;padding:20px}
+.map-legend{margin-bottom:16px}
+.map-legend h3{font-size:15px;margin-bottom:10px}
+.map-legend-items{display:flex;flex-wrap:wrap;gap:12px 20px}
+.map-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)}
+.map-legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+.map-wrapper{display:flex;gap:20px;align-items:stretch}
+.map-container{flex:1;min-width:300px;position:relative;border-radius:var(--radius);overflow:hidden;height:600px}
+#leafletMap{width:100%;height:100%;border-radius:var(--radius);z-index:1}
+.map-sidebar{min-width:220px;max-width:300px;height:600px;display:flex;flex-direction:column}
+.map-sidebar h3{font-size:15px;margin-bottom:12px;flex-shrink:0}
+.result-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.result-item{display:flex;flex-direction:column;padding:10px 12px;border-radius:8px;cursor:pointer;transition:all .2s;font-size:13px;border:1px solid var(--border)}
+.result-item:hover,.result-item.active{background:var(--primary-light);border-color:var(--primary)}
+.result-item.active{box-shadow:0 0 0 2px var(--primary)}
+.result-item .item-name{font-weight:700;margin-bottom:4px}
+.result-item .item-address{color:var(--text-secondary);font-size:12px;line-height:1.4}
+.result-item .item-badge{display:inline-block;padding:2px 8px;border-radius:4px;color:#fff;font-size:11px;font-weight:600;margin-top:4px;width:fit-content}
+
+.info-section{margin-bottom:28px}
+.info-section h2{font-size:22px;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--primary)}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.info-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;border-left:4px solid var(--primary)}
+.info-card h3{font-size:16px;margin-bottom:8px}
+.info-card p{font-size:14px;color:var(--text-secondary);line-height:1.8}
+
+.faq-section{margin-bottom:28px}
+.faq-section h2{font-size:22px;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--primary)}
+.faq-item{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.faq-q{padding:16px 20px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .2s}
+.faq-q:hover{background:var(--primary-light)}
+.faq-q::after{content:'▼';font-size:12px;transition:transform .3s;color:var(--text-secondary)}
+.faq-item.open .faq-q::after{transform:rotate(180deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s;padding:0 20px}
+.faq-item.open .faq-a{max-height:500px;padding:0 20px 16px}
+.faq-a p{font-size:14px;color:var(--text-secondary);line-height:1.8}
+
+footer{background:var(--surface);border-top:1px solid var(--border);padding:24px 20px;text-align:center;font-size:13px;color:var(--text-secondary)}
+footer a{color:var(--primary-dark)}
+
+[data-theme="dark"] .leaflet-tile-pane{filter:brightness(.8) contrast(1.1) saturate(.8)}
+[data-theme="dark"] .leaflet-control-zoom a{background:var(--surface);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .leaflet-control-attribution{background:rgba(15,23,42,.8)!important;color:var(--text-secondary)!important}
+[data-theme="dark"] .leaflet-control-attribution a{color:var(--primary)!important}
+[data-theme="dark"] .leaflet-popup-content-wrapper{background:var(--surface);color:var(--text)}
+[data-theme="dark"] .leaflet-popup-tip{background:var(--surface)}
+
+.loading-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:var(--radius);gap:20px;backdrop-filter:blur(4px)}
+[data-theme="dark"] .loading-overlay{background:rgba(15,23,42,.92)}
+.loading-icon{font-size:48px;animation:bounce 1.2s ease-in-out infinite}
+.loading-text{font-size:15px;font-weight:600;color:var(--text);letter-spacing:.5px}
+.loading-sub{font-size:13px;color:var(--text-secondary);margin-top:-12px}
+.loading-dots{display:flex;gap:8px;margin-top:4px}
+.loading-dots span{width:10px;height:10px;border-radius:50%;background:var(--primary);animation:dotPulse 1.4s ease-in-out infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+.loading-bar{width:180px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:4px}
+.loading-bar-inner{width:30%;height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-dark));border-radius:2px;animation:barSlide 1.8s ease-in-out infinite}
+.loading-retry{font-size:12px;color:var(--accent);font-weight:600;opacity:0;transition:opacity .3s}
+.loading-retry.show{opacity:1}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes dotPulse{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+@keyframes barSlide{0%{transform:translateX(-100%)}50%{transform:translateX(250%)}100%{transform:translateX(-100%)}}
+
+@media(max-width:768px){
+  .map-wrapper{flex-direction:column;align-items:stretch}
+  .map-container{flex:none;height:50vh;min-height:320px;width:100%}
+  .map-sidebar{max-width:100%;width:100%;height:auto}
+  .result-list{max-height:200px;flex:none}
+  .map-section{padding:16px}
+  .search-row{flex-direction:column}
+  .search-input{min-width:auto;width:100%}
+  .info-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .brand h1{font-size:17px}
+  .header-inner{gap:8px}
+  .stats-bar{gap:6px}
+  .stat-chip{padding:4px 10px;font-size:12px}
+}
+</style>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"首頁","item":"https://upliftorch.com/"},{"@type":"ListItem","position":2,"name":"免費線上工具","item":"https://upliftorch.com/tools"},{"@type":"ListItem","position":3,"name":"食在安心","item":"https://upliftorch.com/tools/food-safety/"}]}
+</script>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <h1>🍽️ 食在<span>安心</span></h1>
+    </div>
+    <div class="header-actions">
+      <a href="https://upliftorch.com/tools/food-safety/en/" class="lang-switch">EN</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="切換深色模式">🌙</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="update-bar">
+    <span class="update-time" id="updateTime">資料載入中...</span>
+    <div class="stats-bar">
+      <div class="stat-chip"><div class="stat-dot" style="background:var(--grade-excellent)"></div>優良餐廳 <span id="restaurantCount">--</span></div>
+      <div class="stat-chip"><div class="stat-dot" style="background:var(--grade-haccp)"></div>HACCP 認證 <span id="haccpCount">--</span></div>
+      <div class="stat-chip"><div class="stat-dot" style="background:#ef4444"></div>不合格 <span id="violationCount">--</span></div>
+    </div>
+  </div>
+
+  <div class="search-section">
+    <div class="search-row">
+      <input type="text" class="search-input" id="searchInput" placeholder="搜尋餐廳名稱或地址...">
+      <select class="filter-select" id="countyFilter">
+        <option value="">全部縣市</option>
+      </select>
+      <select class="filter-select" id="typeFilter">
+        <option value="">全部類型</option>
+      </select>
+      <button class="filter-btn active" id="btnAll" data-filter="all">全部</button>
+      <button class="filter-btn" id="btnExcellent" data-filter="restaurant">優良餐廳</button>
+      <button class="filter-btn" id="btnHaccp" data-filter="haccp">HACCP</button>
+      <button class="filter-btn" id="btnViolation" data-filter="violation" style="--violation-bg:#fef2f2">⚠️ 不合格</button>
+    </div>
+    <div class="addr-search">
+      <input type="text" class="addr-input" id="addrInput" placeholder="輸入地址定位，例如：台北市信義區松仁路100號">
+      <button class="addr-btn" id="addrBtn">📍 定位</button>
+      <div class="addr-suggestions" id="addrSuggestions"></div>
+    </div>
+    <div class="addr-msg" id="addrMsg"></div>
+  </div>
+
+  <div class="map-section" id="mapSection">
+    <div class="map-legend">
+      <h3>圖例說明</h3>
+      <div class="map-legend-items">
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--grade-excellent)"></div>優等</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--grade-good)"></div>良等</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--grade-haccp)"></div>HACCP 認證</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#f59e0b"></div>其他等級</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#ef4444"></div>邊境查驗不合格</div>
+      </div>
+    </div>
+    <div class="map-wrapper">
+      <div class="map-container" id="mapContainer">
+        <div id="leafletMap"></div>
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="loading-icon">🍽️</div>
+          <div class="loading-text">正在取得全台認證餐廳資料</div>
+          <div class="loading-sub" id="loadingSub">連線食藥署開放資料平台中...</div>
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+          <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+          <div class="loading-retry" id="loadingRetry"></div>
+        </div>
+      </div>
+      <div class="map-sidebar">
+        <h3>搜尋結果 (<span id="resultCount">0</span>)</h3>
+        <div class="result-list" id="resultList"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="info-section">
+    <h2>認識食品安全認證</h2>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>GHP 餐飲衛生管理分級</h3>
+        <p>依據<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0040122" target="_blank" rel="noopener">《食品良好衛生規範準則》</a>（GHP），衛福部食藥署推動<a href="https://www.fda.gov.tw/tc/sitecontent.aspx?sid=2653" target="_blank" rel="noopener">餐飲衛生管理分級評核制度</a>，由各縣市衛生局組成評核小組，針對餐廳的作業場所、設施及品保制度進行評核，分為「優」與「良」兩個等級。通過評核的業者代表其衛生管理達到一定水準。</p>
+      </div>
+      <div class="info-card">
+        <h3>HACCP 食品安全管制系統</h3>
+        <p>HACCP（Hazard Analysis and Critical Control Points）是<a href="https://www.fao.org/4/y1579e/y1579e03.htm" target="_blank" rel="noopener">國際食品法典委員會（Codex Alimentarius）認可</a>的食品安全管理系統，透過危害分析與重要管制點的系統化管理，從原料、加工、儲存到販售的每個環節進行風險控管。依據我國<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0040116" target="_blank" rel="noopener">《食品安全管制系統準則》</a>，通過 HACCP 衛生評鑑的業者，代表其食品安全管理已達到國際標準。</p>
+      </div>
+      <div class="info-card">
+        <h3>如何選擇安心餐廳？</h3>
+        <p>選擇通過衛生評鑑的餐廳是保障食安的第一步。您可以透過本平台地圖查詢附近的認證餐廳，也可注意餐廳是否張貼衛生評鑑標章。此外，觀察餐廳環境整潔度、食材新鮮度與工作人員衛生習慣，也是判斷餐廳安全性的重要指標。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-section">
+    <h2>常見問題</h2>
+    <div class="faq-item">
+      <div class="faq-q">什麼是餐飲衛生管理分級評核？</div>
+      <div class="faq-a"><p>自民國 99 年起，衛福部推動<a href="https://www.fda.gov.tw/tc/sitecontent.aspx?sid=2653" target="_blank" rel="noopener">餐飲衛生管理分級評核制度</a>，由地方衛生局派員與專家組成評核小組，依據<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0040122" target="_blank" rel="noopener">GHP 準則</a>對餐飲業者的環境衛生、設備管理、從業人員衛生及品保制度等項目進行實地評核。評核結果分為「優」及「良」兩個等級，通過者可張貼分級標章供消費者辨識。</p></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">HACCP 認證與 GHP 評核有什麼差異？</div>
+      <div class="faq-a"><p>GHP 是基礎的衛生管理規範，著重於環境清潔、人員衛生等基本條件；HACCP 則是進階的食品安全管理系統，需要建立完整的危害分析、管制點監控與矯正措施。HACCP 的要求更嚴格、涵蓋範圍更廣，適用於團膳、食品工廠等大規模供膳場所。目前依<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0040116" target="_blank" rel="noopener">《食品安全管制系統準則》</a>，一定規模以上的餐飲業者須強制實施 HACCP。</p></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">本平台的資料多久更新一次？</div>
+      <div class="faq-a"><p>本平台的資料來自衛福部食藥署開放資料平台，後端每 60 分鐘向食藥署 API 取得最新資料。優良餐飲業者名單隨各縣市衛生局評核進度不定期更新，HACCP 認證資料則隨認證審核結果更新。請注意，部分歷史資料的認證狀態可能已變更，實際情況以各縣市衛生局公告為準。</p></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">為什麼有些餐廳在地圖上看不到？</div>
+      <div class="faq-a"><p>由於本平台使用地址進行地理定位（geocoding），部分地址格式不完整或已變更的業者可能無法正確顯示在地圖上。此外，本平台僅收錄通過衛生評鑑或 HACCP 認證的業者，並非所有合法經營的餐廳都會出現。未出現在平台上不代表該餐廳不安全。</p></div>
+    </div>
+  </section>
+
+  <section class="info-section" id="references">
+    <h2>資料來源</h2>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>衛福部食藥署</h3>
+        <p><a href="https://data.gov.tw/dataset/8454" target="_blank" rel="noopener">優良餐飲業者名單資料集</a>（InfoId=10）、餐飲業食品安全管制系統衛生評鑑證明廠商資料集（InfoId=17）。資料來源：<a href="https://data.fda.gov.tw/" target="_blank" rel="noopener">data.fda.gov.tw</a></p>
+      </div>
+      <div class="info-card">
+        <h3>政府資料開放平臺</h3>
+        <p>本平台使用之資料依據<a href="https://data.gov.tw/license" target="_blank" rel="noopener">「政府資料開放授權條款第1版」</a>授權使用。<a href="https://data.gov.tw/" target="_blank" rel="noopener">data.gov.tw</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>© <script>document.write(new Date().getFullYear())</script> 食在安心 — 台灣優良餐飲地圖 | 資料來源：<a href="https://data.fda.gov.tw/" target="_blank" rel="noopener">衛福部食藥署</a></p>
+</footer>
+
+<script>
+(function(){
+  // Dark mode
+  const themeToggle = document.getElementById('themeToggle');
+  function setTheme(t){ document.documentElement.setAttribute('data-theme', t); localStorage.setItem('theme', t); themeToggle.textContent = t === 'dark' ? '☀️' : '🌙'; }
+  const saved = localStorage.getItem('theme');
+  if (saved) { setTheme(saved); }
+  else if (window.matchMedia('(prefers-color-scheme: dark)').matches) { setTheme('dark'); }
+  themeToggle.addEventListener('click', () => { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); });
+
+  const API_URL = 'http://localhost:7001/api/food-safety/data';
+  let allData = [];
+  let leafletMap = null;
+  let markerLayer = null;
+  let debounceTimer = null;
+
+  const countyCoords = {
+    '臺北市':[25.033,121.565],'新北市':[25.012,121.465],'桃園市':[24.994,121.301],
+    '臺中市':[24.148,120.674],'臺南市':[22.999,120.227],'高雄市':[22.627,120.301],
+    '基隆市':[25.128,121.739],'新竹市':[24.804,120.969],'新竹縣':[24.839,121.017],
+    '苗栗縣':[24.560,120.821],'彰化縣':[24.076,120.542],'南投縣':[23.909,120.684],
+    '雲林縣':[23.710,120.431],'嘉義市':[23.480,120.449],'嘉義縣':[23.452,120.255],
+    '屏東縣':[22.551,120.549],'宜蘭縣':[24.752,121.753],'花蓮縣':[23.992,121.601],
+    '臺東縣':[22.756,121.144],'澎湖縣':[23.571,119.579],'金門縣':[24.449,118.377],
+    '連江縣':[26.160,119.950],
+  };
+
+  function getCountyFromAddress(addr) {
+    if (!addr) return null;
+    for (const county of Object.keys(countyCoords)) {
+      if (addr.includes(county)) return county;
+    }
+    // 嘗試匹配舊名
+    if (addr.includes('台北市')) return '臺北市';
+    if (addr.includes('台中市')) return '臺中市';
+    if (addr.includes('台南市')) return '臺南市';
+    if (addr.includes('台東縣')) return '臺東縣';
+    return null;
+  }
+
+  function getGradeInfo(grade) {
+    if (!grade) return { label: '評核', color: '#f59e0b' };
+    const g = grade.trim();
+    if (g.includes('特優')) return { label: '特優', color: '#10b981' };
+    if (g.includes('優')) return { label: '優等', color: '#10b981' };
+    if (g.includes('良')) return { label: '良等', color: '#3b82f6' };
+    if (g.includes('甲')) return { label: '甲等', color: '#10b981' };
+    if (g.includes('合格')) return { label: '合格', color: '#3b82f6' };
+    return { label: g || '評核', color: '#f59e0b' };
+  }
+
+  function initMap() {
+    if (leafletMap) return;
+    const taiwanBounds = L.latLngBounds([21.5, 119.2], [26.5, 122.2]);
+    leafletMap = L.map('leafletMap', {
+      center: [23.7, 120.96],
+      zoom: 7,
+      zoomControl: true,
+      attributionControl: true,
+      maxBounds: taiwanBounds,
+      maxBoundsViscosity: 1.0,
+      minZoom: 7,
+      maxZoom: 16,
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18,
+    }).addTo(leafletMap);
+    markerLayer = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50, spiderfyOnMaxZoom: true, disableClusteringAtZoom: 14 });
+    leafletMap.addLayer(markerLayer);
+    let resizeTimer = null;
+    window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => leafletMap.invalidateSize(), 200); });
+  }
+
+  function processData(restaurants, haccp, violations) {
+    const processed = [];
+
+    restaurants.forEach(r => {
+      const county = getCountyFromAddress(r['營業地址']);
+      const coords = county ? countyCoords[county] : null;
+      if (coords) {
+        const grade = getGradeInfo(r['等級']);
+        processed.push({
+          type: 'restaurant',
+          name: r['業者名稱'],
+          address: r['營業地址'],
+          county: county,
+          category: r['餐飲業別'] || '一般餐飲',
+          grade: grade.label,
+          gradeColor: grade.color,
+          year: r['年度'] ? `民國 ${r['年度']} 年` : '',
+          lat: coords[0] + (Math.random() - 0.5) * 0.05,
+          lng: coords[1] + (Math.random() - 0.5) * 0.05,
+        });
+      }
+    });
+
+    haccp.forEach(h => {
+      const county = h['縣市別'] || getCountyFromAddress(h['地址']);
+      const mappedCounty = county ? Object.keys(countyCoords).find(k => county.includes(k.replace('臺','台')) || k.includes(county)) || county : null;
+      const coords = mappedCounty ? countyCoords[mappedCounty] : null;
+      if (coords) {
+        processed.push({
+          type: 'haccp',
+          name: h['廠商名稱'],
+          address: h['地址'],
+          county: mappedCounty || county,
+          category: h['類別'] || 'HACCP',
+          grade: 'HACCP',
+          gradeColor: '#8b5cf6',
+          year: h['證書有效期限'] ? `效期至 ${h['證書有效期限']}` : '',
+          certStatus: h['證書狀況'] || '',
+          lat: coords[0] + (Math.random() - 0.5) * 0.04,
+          lng: coords[1] + (Math.random() - 0.5) * 0.04,
+        });
+      }
+    });
+
+    (violations || []).forEach(v => {
+      const addr = v['進口商地址'] || '';
+      const county = getCountyFromAddress(addr);
+      const coords = county ? countyCoords[county] : null;
+      if (coords) {
+        processed.push({
+          type: 'violation',
+          name: v['進口商名稱'] || v['主旨'] || '未知業者',
+          address: addr,
+          county: county,
+          category: v['原因'] || '邊境查驗不合格',
+          grade: '不合格',
+          gradeColor: '#ef4444',
+          year: v['發布日期'] || '',
+          violationDetail: v['不合格原因暨檢出量詳細說明'] || '',
+          violationProduct: v['主旨'] || '',
+          violationOrigin: v['產地'] || '',
+          disposition: v['處置情形'] || '',
+          lat: coords[0] + (Math.random() - 0.5) * 0.04,
+          lng: coords[1] + (Math.random() - 0.5) * 0.04,
+        });
+      }
+    });
+
+    return processed;
+  }
+
+  function populateFilters(data) {
+    const counties = [...new Set(data.map(d => d.county).filter(Boolean))].sort();
+    const types = [...new Set(data.map(d => d.category).filter(Boolean))].sort();
+    const countySel = document.getElementById('countyFilter');
+    const typeSel = document.getElementById('typeFilter');
+    counties.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; countySel.appendChild(o); });
+    types.slice(0, 30).forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; typeSel.appendChild(o); });
+  }
+
+  function applyFilters() {
+    const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+    const county = document.getElementById('countyFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const activeBtn = document.querySelector('.filter-btn.active');
+    const dataFilter = activeBtn ? activeBtn.dataset.filter : 'all';
+
+    const filtered = allData.filter(d => {
+      if (dataFilter === 'restaurant' && d.type !== 'restaurant') return false;
+      if (dataFilter === 'haccp' && d.type !== 'haccp') return false;
+      if (dataFilter === 'violation' && d.type !== 'violation') return false;
+      if (county && d.county !== county) return false;
+      if (type && d.category !== type) return false;
+      if (keyword && !d.name.toLowerCase().includes(keyword) && !(d.address || '').toLowerCase().includes(keyword)) return false;
+      return true;
+    });
+
+    renderMap(filtered);
+    renderResultList(filtered);
+    document.getElementById('resultCount').textContent = filtered.length.toLocaleString();
+  }
+
+  let currentMarkers = [];
+
+  function renderMap(data) {
+    initMap();
+    markerLayer.clearLayers();
+    currentMarkers = [];
+    const markers = [];
+    for (let i = 0; i < data.length; i++) {
+      const d = data[i];
+      const marker = L.circleMarker([d.lat, d.lng], {
+        radius: 6,
+        fillColor: d.gradeColor,
+        color: '#fff',
+        weight: 1.5,
+        fillOpacity: 0.8,
+      });
+
+      let popupHtml = `<div style="min-width:180px"><strong>${d.name}</strong><br>`;
+      popupHtml += `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${d.gradeColor};color:#fff;font-size:11px;font-weight:700;margin:4px 0">${d.grade}</span><br>`;
+      if (d.address) popupHtml += `<span style="font-size:12px;color:var(--text-secondary)">📍 ${d.address}</span><br>`;
+      if (d.category) popupHtml += `<span style="font-size:12px;color:var(--text-secondary)">🏷️ ${d.category}</span><br>`;
+      if (d.year) popupHtml += `<span style="font-size:12px;color:var(--text-secondary)">📅 ${d.year}</span>`;
+      if (d.certStatus) popupHtml += `<br><span style="font-size:12px;color:var(--text-secondary)">📋 ${d.certStatus}</span>`;
+      if (d.type === 'violation') {
+        if (d.violationProduct) popupHtml += `<br><span style="font-size:12px;color:#ef4444">🚫 產品：${d.violationProduct}</span>`;
+        if (d.violationOrigin) popupHtml += `<br><span style="font-size:12px;color:var(--text-secondary)">🌍 產地：${d.violationOrigin}</span>`;
+        if (d.violationDetail) popupHtml += `<br><span style="font-size:11px;color:var(--text-secondary)">${d.violationDetail.substring(0, 100)}${d.violationDetail.length > 100 ? '...' : ''}</span>`;
+        if (d.disposition) popupHtml += `<br><span style="font-size:11px;color:#ef4444">⚖️ ${d.disposition}</span>`;
+      }
+      popupHtml += '</div>';
+
+      marker.bindPopup(popupHtml);
+      markers.push(marker);
+      currentMarkers.push(marker);
+    }
+    markerLayer.addLayers(markers);
+  }
+
+  let currentFilteredData = [];
+
+  function renderResultList(data) {
+    currentFilteredData = data;
+    const list = document.getElementById('resultList');
+    const limit = Math.min(data.length, 200);
+    let html = '';
+    for (let i = 0; i < limit; i++) {
+      const d = data[i];
+      html += `<div class="result-item" data-idx="${i}">`;
+      html += `<div class="item-name">${d.name}</div>`;
+      if (d.address) html += `<div class="item-address">📍 ${d.address}</div>`;
+      html += `<div class="item-badge" style="background:${d.gradeColor}">${d.grade}</div>`;
+      html += '</div>';
+    }
+    if (data.length > limit) html += `<div style="text-align:center;padding:12px;color:var(--text-secondary);font-size:13px">顯示前 ${limit} 筆，共 ${data.length.toLocaleString()} 筆結果</div>`;
+    list.innerHTML = html;
+  }
+
+  document.getElementById('resultList').addEventListener('click', (e) => {
+    const item = e.target.closest('.result-item');
+    if (!item) return;
+    const idx = parseInt(item.dataset.idx);
+    const d = currentFilteredData[idx];
+    if (!d || !leafletMap) return;
+
+    // 高亮選中的卡片
+    document.querySelectorAll('.result-item.active').forEach(el => el.classList.remove('active'));
+    item.classList.add('active');
+
+    // 捲動到地圖區域
+    document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Zoom in 到該點並打開 popup
+    const marker = currentMarkers[idx];
+    if (marker) {
+      markerLayer.zoomToShowLayer(marker, () => {
+        marker.openPopup();
+      });
+    } else {
+      leafletMap.flyTo([d.lat, d.lng], 14, { animate: true, duration: 0.8 });
+    }
+  });
+
+  // Filter button events
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilters();
+    });
+  });
+  document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilters, 300);
+  });
+  document.getElementById('countyFilter').addEventListener('change', applyFilters);
+  document.getElementById('typeFilter').addEventListener('change', applyFilters);
+
+  // Address geocoding
+  let addrDebounce = null;
+  let locateMarker = null;
+  const addrInput = document.getElementById('addrInput');
+  const addrBtn = document.getElementById('addrBtn');
+  const addrMsg = document.getElementById('addrMsg');
+  const addrSuggestions = document.getElementById('addrSuggestions');
+
+  async function geocodeAddress(query) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=tw&limit=5&accept-language=zh-TW`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Geocoding failed');
+    return await res.json();
+  }
+
+  function showSuggestions(results) {
+    if (results.length === 0) {
+      addrSuggestions.classList.remove('show');
+      return;
+    }
+    addrSuggestions.innerHTML = results.map((r, i) =>
+      `<div class="addr-suggestion" data-idx="${i}"><span>${r.display_name.split(',')[0]}</span><small>${r.display_name}</small></div>`
+    ).join('');
+    addrSuggestions._results = results;
+    addrSuggestions.classList.add('show');
+  }
+
+  function flyToLocation(lat, lng, label) {
+    initMap();
+    leafletMap.flyTo([lat, lng], 14, { animate: true, duration: 1 });
+    if (locateMarker) { leafletMap.removeLayer(locateMarker); }
+    const icon = L.divIcon({ className: 'locate-pin', html: '📍', iconSize: [36, 36], iconAnchor: [18, 36] });
+    locateMarker = L.marker([lat, lng], { icon }).addTo(leafletMap);
+    locateMarker.bindPopup(`<strong>搜尋位置</strong><br><span style="font-size:12px;color:var(--text-secondary)">${label}</span>`).openPopup();
+    addrMsg.textContent = `已定位至：${label}`;
+    addrMsg.className = 'addr-msg success';
+  }
+
+  addrInput.addEventListener('input', () => {
+    clearTimeout(addrDebounce);
+    const q = addrInput.value.trim();
+    if (q.length < 3) { addrSuggestions.classList.remove('show'); return; }
+    addrDebounce = setTimeout(async () => {
+      try {
+        const results = await geocodeAddress(q);
+        showSuggestions(results);
+      } catch (e) { addrSuggestions.classList.remove('show'); }
+    }, 400);
+  });
+
+  addrSuggestions.addEventListener('click', (e) => {
+    const item = e.target.closest('.addr-suggestion');
+    if (!item) return;
+    const r = addrSuggestions._results[parseInt(item.dataset.idx)];
+    addrInput.value = r.display_name.split(',')[0];
+    addrSuggestions.classList.remove('show');
+    flyToLocation(parseFloat(r.lat), parseFloat(r.lon), r.display_name);
+  });
+
+  addrBtn.addEventListener('click', async () => {
+    const q = addrInput.value.trim();
+    if (!q) return;
+    addrBtn.disabled = true;
+    addrBtn.textContent = '定位中...';
+    addrMsg.textContent = '';
+    addrSuggestions.classList.remove('show');
+    try {
+      const results = await geocodeAddress(q);
+      if (results.length > 0) {
+        flyToLocation(parseFloat(results[0].lat), parseFloat(results[0].lon), results[0].display_name);
+      } else {
+        addrMsg.textContent = '找不到此地址，請嘗試更完整的地址';
+        addrMsg.className = 'addr-msg error';
+      }
+    } catch (e) {
+      addrMsg.textContent = '定位服務暫時無法使用';
+      addrMsg.className = 'addr-msg error';
+    } finally {
+      addrBtn.disabled = false;
+      addrBtn.textContent = '📍 定位';
+    }
+  });
+
+  addrInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addrBtn.click(); }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.addr-search')) addrSuggestions.classList.remove('show');
+  });
+
+  // FAQ toggle
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => { q.parentElement.classList.toggle('open'); });
+  });
+
+  // Load data
+  async function loadData(retries = 3) {
+    const sub = document.getElementById('loadingSub');
+    const retry = document.getElementById('loadingRetry');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        if (attempt === 1) {
+          sub.textContent = '連線食藥署開放資料平台中...';
+        }
+        const res = await fetch(API_URL);
+        sub.textContent = '資料下載中，正在解析...';
+        if (!res.ok) throw new Error('API error: ' + res.status);
+        const json = await res.json();
+        sub.textContent = '繪製地圖標記中...';
+        const restaurants = json.data.restaurants || [];
+        const haccp = json.data.haccp || [];
+        const violations = json.data.violations || [];
+        allData = processData(restaurants, haccp, violations);
+
+        const restaurantCount = allData.filter(d => d.type === 'restaurant').length;
+        const haccpCount = allData.filter(d => d.type === 'haccp').length;
+        const violationCount = allData.filter(d => d.type === 'violation').length;
+        document.getElementById('restaurantCount').textContent = restaurantCount.toLocaleString();
+        document.getElementById('haccpCount').textContent = haccpCount.toLocaleString();
+        document.getElementById('violationCount').textContent = violationCount.toLocaleString();
+        document.getElementById('updateTime').textContent = `資料更新時間：${new Date().toLocaleString('zh-TW')}`;
+
+        populateFilters(allData);
+        applyFilters();
+        document.getElementById('loadingOverlay').style.display = 'none';
+        return;
+      } catch (err) {
+        console.warn(`載入失敗 (${attempt}/${retries}):`, err.message);
+        if (attempt < retries) {
+          retry.textContent = `連線逾時，第 ${attempt + 1} 次重試中...`;
+          retry.classList.add('show');
+          sub.textContent = '重新連線中...';
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+        } else {
+          document.getElementById('loadingOverlay').innerHTML = '<div style="text-align:center;color:var(--text-secondary)"><div style="font-size:48px;margin-bottom:16px">😔</div><p style="font-weight:600;margin-bottom:6px">資料載入失敗</p><p style="font-size:13px">食藥署 API 暫時無法連線，請稍後再試</p></div>';
+        }
+      }
+    }
+  }
+
+  loadData();
+  setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 500);
+})();
+</script>
+
+
+<script>document.querySelectorAll(".current-year").forEach(function (el) { el.textContent = new Date().getFullYear(); });</script>
+
+<footer class="open-source-attribution" style="padding:24px;text-align:center"><a href="https://upliftorch.com/">Upliftorch</a> · <a href="https://upliftorch.com/tools/food-safety/">Official demo / 線上工具</a></footer>
+</body>
+</html>
